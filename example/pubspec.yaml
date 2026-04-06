@@ -1,0 +1,17 @@
+name: example
+description: Example app for simple_pdf_generator
+
+environment:
+  sdk: ">=2.17.0 <3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  simple_pdf_generator:
+    path: ../
+  open_file_safe: ^3.2.3
+  path_provider: ^2.0.8  
+
+flutter:
+  uses-material-design: true
