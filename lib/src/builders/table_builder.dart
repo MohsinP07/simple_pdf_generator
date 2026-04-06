@@ -1,7 +1,9 @@
 import 'package:pdf/widgets.dart' as pw;
 import '../models/pdf_table.dart';
 
+/// Renders [PdfTable] as a `pdf` [pw.Table] from text arrays.
 class TableBuilder {
+  /// Maps each row (optionally via [PdfTable.mapper]) and builds the table widget.
   static pw.Widget build(PdfTable table) {
     final mappedData = table.data.map((item) {
       final row = table.mapper != null ? table.mapper!(item) : item;

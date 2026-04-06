@@ -1,7 +1,9 @@
 import 'package:pdf/widgets.dart' as pw;
 import '../models/pdf_header.dart';
 
+/// Builds title, subtitle, extra, and spacing widgets for [PdfHeader].
 class HeaderBuilder {
+  /// Lays out [header] as a vertical list of `pdf` [pw.Text] widgets.
   static List<pw.Widget> build(PdfHeader header) {
     return [
       pw.Text(

@@ -7,7 +7,13 @@ import '../builders/header_builder.dart';
 import '../builders/table_builder.dart';
 import '../builders/footer_builder.dart';
 
+/// Entry point for creating PDF documents from [PdfHeader], [PdfTable], and
+/// optional [PdfFooter].
 class SimplePdf {
+  /// Builds a multi-page PDF with the given [header], [table], and [footer].
+  ///
+  /// The returned value is a `pdf` package document; call [pw.Document.save]
+  /// to obtain `Uint8List` bytes for writing to a file.
   static Future<pw.Document> generate({
     required PdfHeader header,
     required PdfTable table,
