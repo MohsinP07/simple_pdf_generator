@@ -12,9 +12,9 @@ class HeaderBuilder {
         ),
       ),
       if (header.subtitle != null)
-        pw.Text(header.subtitle!, style: pw.TextStyle(fontSize: 14)),
+        pw.Text(header.subtitle!, style: const pw.TextStyle(fontSize: 14)),
       if (header.extra != null)
-        pw.Text(header.extra!, style: pw.TextStyle(fontSize: 12)),
+        pw.Text(header.extra!, style: const pw.TextStyle(fontSize: 12)),
       pw.SizedBox(height: 20),
     ];
   }

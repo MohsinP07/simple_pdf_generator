@@ -31,7 +31,6 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-
   // Dummy data
   List<Map<String, dynamic>> get summaryReport => [
         {
@@ -107,7 +106,6 @@ class _HomePageState extends State<HomePage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("PDF saved at: ${file.path}")),
       );
-
     } catch (e) {
       print("Error generating PDF: $e");
 

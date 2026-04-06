@@ -107,7 +107,7 @@ To open the file on device, you can use packages such as [`path_provider`](https
 
 The following sample was generated with the example app: header, tabular data (with a mapper), and footer.
 
-![Sample PDF: summary report with table](doc/example_output.png)
+![Sample PDF: summary report with table](https://raw.githubusercontent.com/MohsinP07/simple_pdf_generator/main/doc/example_output.png)
 
 More features are on the way—see [Roadmap](#roadmap) for planned work.
 

@@ -9,7 +9,7 @@ class FooterBuilder {
       padding: const pw.EdgeInsets.only(top: 20),
       child: pw.Text(
         footer.text!,
-        style: pw.TextStyle(fontSize: 10),
+        style: const pw.TextStyle(fontSize: 10),
       ),
     );
   }
