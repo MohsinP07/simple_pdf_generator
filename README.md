@@ -31,14 +31,6 @@ dependencies:
   simple_pdf_generator: ^0.0.1
 ```
 
-**Local path** (during development):
-
-```yaml
-dependencies:
-  simple_pdf_generator:
-    path: ../simple_pdf_generator
-```
-
 Run `flutter pub get`.
 
 ## Usage
