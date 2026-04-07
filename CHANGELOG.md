@@ -1,8 +1,7 @@
-# Changelog
+## 0.1.0
 
-## 0.0.2
-
-- Initial release
-- Basic PDF generation support
-- Header, table, and footer rendering
-- JSON-based table generation with mapper support
+- Added support for multiple tables
+- Added per-table summary sections
+- Added table header styling
+- Added table cell styling
+- Added summary styling

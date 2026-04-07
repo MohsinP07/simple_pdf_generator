@@ -6,33 +6,63 @@ import '../models/pdf_footer.dart';
 import '../builders/header_builder.dart';
 import '../builders/table_builder.dart';
 import '../builders/footer_builder.dart';
+import '../fonts/simple_pdf_fonts.dart';
+import '../models/pdf_font_family.dart';
 
-/// Entry point for creating PDF documents from [PdfHeader], [PdfTable], and
-/// optional [PdfFooter].
+/// Vertical gap between consecutive tables (pdf layout units, ~points).
+const double kSimplePdfTableSpacing = 24;
+
+/// Entry point for creating PDF documents from [PdfHeader], one or more
+/// [PdfTable]s, and optional [PdfFooter].
 class SimplePdf {
-  /// Builds a multi-page PDF with the given [header], [table], and [footer].
+  /// Builds a multi-page PDF with the given [header], [tables] (or legacy
+  /// [table]), and [footer].
+  ///
+  /// Tables are rendered top to bottom in order, separated by
+  /// [kSimplePdfTableSpacing]. Each [PdfTable] may append an optional summary
+  /// (see [PdfTable.summaryHeaders] / [PdfTable.summaryData]) directly under
+  /// that table. The document [PdfHeader] is built once at the start.
+  ///
+  /// By default a bundled Noto Sans theme is loaded so Unicode characters
+  /// (e.g. em dash, Greek letters) render correctly. Override with [theme] if
+  /// you supply your own fonts.
   ///
   /// The returned value is a `pdf` package document; call [pw.Document.save]
   /// to obtain `Uint8List` bytes for writing to a file.
   static Future<pw.Document> generate({
     required PdfHeader header,
-    required PdfTable table,
+    List<PdfTable>? tables,
+    @Deprecated('Use tables instead')
+    PdfTable? table,
     PdfFooter? footer,
+    pw.ThemeData? theme,
   }) async {
+    final resolvedTables = _resolveTables(tables: tables, table: table);
+    final themeData = theme ?? await loadSimplePdfUnicodeTheme();
+    final fonts = await _loadRequiredFonts(resolvedTables);
     final pdf = pw.Document();
 
     pdf.addPage(
       pw.MultiPage(
+        theme: themeData,
         build: (context) {
           final widgets = <pw.Widget>[];
 
-          // Header
           widgets.addAll(HeaderBuilder.build(header));
 
-          // Table
-          widgets.add(TableBuilder.build(table));
+          for (var i = 0; i < resolvedTables.length; i++) {
+            if (i > 0) {
+              widgets.add(pw.SizedBox(height: kSimplePdfTableSpacing));
+            }
+            widgets.addAll(
+              TableBuilder.buildSection(
+                resolvedTables[i],
+                context,
+                fonts: fonts,
+              ),
+            );
+          }
 
-          // Footer
           final footerWidget = FooterBuilder.build(footer);
           if (footerWidget != null) {
             widgets.add(footerWidget);
@@ -44,5 +74,44 @@ class SimplePdf {
     );
 
     return pdf;
+  }
+
+  static Future<Map<PdfFontFamily, pw.Font>> _loadRequiredFonts(
+    List<PdfTable> tables,
+  ) async {
+    final families = <PdfFontFamily>{};
+    for (final t in tables) {
+      final ff = t.cellStyle?.fontFamily;
+      if (ff != null) families.add(ff);
+      final sf = t.summaryStyle?.fontFamily;
+      if (sf != null) families.add(sf);
+    }
+    final out = <PdfFontFamily, pw.Font>{};
+    for (final f in families) {
+      out[f] = await loadSimplePdfFont(f);
+    }
+    return out;
+  }
+
+  /// Prefers a non-empty [tables] list; otherwise uses [table] as a
+  /// single-element list for backward compatibility.
+  static List<PdfTable> _resolveTables({
+    List<PdfTable>? tables,
+    PdfTable? table,
+  }) {
+    if (tables != null && tables.isNotEmpty) {
+      return List<PdfTable>.from(tables);
+    }
+    if (table != null) {
+      return [table];
+    }
+    if (tables != null && tables.isEmpty) {
+      throw ArgumentError(
+        'tables must not be empty. Pass at least one PdfTable, or use table.',
+      );
+    }
+    throw ArgumentError(
+      'SimplePdf.generate requires at least one table: pass tables or table.',
+    );
   }
 }
