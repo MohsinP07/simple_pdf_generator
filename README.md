@@ -260,11 +260,11 @@ The following sample was generated with the example app: header, tabular data (w
 
 Multi-table example with per-table summaries:
 
-![Sample PDF: multi table with summaries](doc/multi_table_output.png)
+![Sample PDF: multi table with summaries](https://raw.githubusercontent.com/MohsinP07/simple_pdf_generator/main/doc/multi_table_output.png)
 
 Multilingual table example (Unicode text in table cells):
 
-![Sample PDF: multilingual table text](doc/multilingual_table_output.png)
+![Sample PDF: multilingual table text](https://raw.githubusercontent.com/MohsinP07/simple_pdf_generator/main/doc/multilingual_table_output.png)
 
 More features are on the way—see [Roadmap](#roadmap) for planned work.
 

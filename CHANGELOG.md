@@ -1,4 +1,4 @@
-## 0.2.0
+## 0.2.1
 
 - **Table cells:** added `PdfTableCell` with `PdfTableCell.text` and `PdfTableCell.image` so rows can mix Unicode text (theme font) and raster images (`Uint8List`, e.g. PNG). Plain `String` and raw `Uint8List` map values remain supported for backward compatibility.
 - Default max image size in table cells is 40×40 PDF points when not specified; optional Flutter `BoxFit` maps to the `pdf` package layout.

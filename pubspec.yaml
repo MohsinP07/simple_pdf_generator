@@ -1,6 +1,6 @@
 name: simple_pdf_generator
 description: A lightweight Flutter package to generate PDFs from structured data.
-version: 0.2.0
+version: 0.2.1
 
 homepage: https://github.com/MohsinP07/simple_pdf_generator
 repository: https://github.com/MohsinP07/simple_pdf_generator
