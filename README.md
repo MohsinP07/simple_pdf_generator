@@ -262,6 +262,10 @@ Multi-table example with per-table summaries:
 
 ![Sample PDF: multi table with summaries](doc/multi_table_output.png)
 
+Multilingual table example (Unicode text in table cells):
+
+![Sample PDF: multilingual table text](doc/multilingual_table_output.png)
+
 More features are on the way—see [Roadmap](#roadmap) for planned work.
 
 ## API summary
