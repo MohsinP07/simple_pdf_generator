@@ -13,6 +13,12 @@ class HeaderBuilder {
           fontWeight: pw.FontWeight.bold,
         ),
       ),
+      if (header.subtitleImage != null)
+        pw.Image(
+          pw.MemoryImage(header.subtitleImage!),
+          height: 30,
+          fit: pw.BoxFit.contain,
+        ),
       if (header.subtitle != null)
         pw.Text(header.subtitle!, style: const pw.TextStyle(fontSize: 14)),
       if (header.extra != null)

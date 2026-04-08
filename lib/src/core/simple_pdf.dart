@@ -51,8 +51,34 @@ class SimplePdf {
           widgets.addAll(HeaderBuilder.build(header));
 
           for (var i = 0; i < resolvedTables.length; i++) {
-            if (i > 0) {
+            if (resolvedTables[i].startOnNewPage) {
+              widgets.add(pw.NewPage());
+            }
+            if (i > 0 && !resolvedTables[i].startOnNewPage) {
               widgets.add(pw.SizedBox(height: kSimplePdfTableSpacing));
+            }
+            final sectionTitleImage = resolvedTables[i].sectionTitleImage;
+            if (sectionTitleImage != null) {
+              widgets.add(
+                pw.Image(
+                  pw.MemoryImage(sectionTitleImage),
+                  height: 30,
+                  fit: pw.BoxFit.contain,
+                ),
+              );
+              widgets.add(pw.SizedBox(height: 6));
+            }
+            final sectionTitle = resolvedTables[i].sectionTitle;
+            if (sectionTitle != null && sectionTitle.trim().isNotEmpty) {
+              widgets.add(
+                pw.Text(
+                  sectionTitle,
+                  style: pw.Theme.of(context)
+                      .defaultTextStyle
+                      .copyWith(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                ),
+              );
+              widgets.add(pw.SizedBox(height: 8));
             }
             widgets.addAll(
               TableBuilder.buildSection(

@@ -1,4 +1,9 @@
+// ignore_for_file: public_member_api_docs
+
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file_safe/open_file_safe.dart';
@@ -31,6 +36,11 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  /// 1×1 PNG used as a stand-in for a logo/signature column.
+  static final Uint8List _demoPngBytes = base64Decode(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  );
+
   // Dummy data
   List<Map<String, dynamic>> get summaryReport => [
         {
@@ -94,6 +104,25 @@ class _HomePageState extends State<HomePage> {
             data: const [
               {"Metric": "Rows", "Value": "4"},
               {"Metric": "Period", "Value": "Jan 2026"},
+            ],
+          ),
+          PdfTable(
+            headers: ["Label", "Photo", "Amount"],
+            data: [
+              {
+                "Label": "With typed cells",
+                "Photo": PdfTableCell.image(
+                  _demoPngBytes,
+                  maxWidth: 28,
+                  maxHeight: 28,
+                ),
+                "Amount": r"$99.00",
+              },
+              {
+                "Label": "String-only row",
+                "Photo": _demoPngBytes,
+                "Amount": "12.50",
+              },
             ],
           ),
         ],

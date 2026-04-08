@@ -1,15 +1,60 @@
+import 'dart:typed_data';
+
+import 'package:flutter/painting.dart' show BoxFit;
 import 'package:pdf/pdf.dart' show PdfColor, PdfColors;
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/pdf_table.dart';
+import '../models/pdf_table_cell.dart';
 import '../models/pdf_table_cell_style.dart';
 import '../models/pdf_font_family.dart';
 import '../models/pdf_table_header_style.dart';
 import '../models/simple_pdf_color.dart';
 
-/// Renders [PdfTable] as a `pdf` [pw.Table] from text arrays.
+class _ResolvedTableCell {
+  const _ResolvedTableCell({
+    required this.text,
+    this.imageBytes,
+    this.imageMaxWidth,
+    this.imageMaxHeight,
+    this.imageFit,
+  });
+
+  final String text;
+  final Uint8List? imageBytes;
+  final double? imageMaxWidth;
+  final double? imageMaxHeight;
+  final BoxFit? imageFit;
+
+  bool get isImage => imageBytes != null;
+
+  factory _ResolvedTableCell.text(String t) => _ResolvedTableCell(text: t);
+
+  factory _ResolvedTableCell.image(
+    Uint8List bytes, {
+    required double maxWidth,
+    required double maxHeight,
+    BoxFit? fit,
+  }) {
+    return _ResolvedTableCell(
+      text: '',
+      imageBytes: bytes,
+      imageMaxWidth: maxWidth,
+      imageMaxHeight: maxHeight,
+      imageFit: fit,
+    );
+  }
+}
+
+/// Renders [PdfTable] as a `pdf` [pw.Table] from text arrays and optional
+/// image cells.
 class TableBuilder {
   static const double _kSummarySpacingAfterTable = 20;
+
+  /// Default max image size in PDF points when [Uint8List] or [PdfTableCell.image]
+  /// omits explicit bounds.
+  static const double _kDefaultImageMaxWidth = 40;
+  static const double _kDefaultImageMaxHeight = 40;
 
   static final PdfColor _defaultHeaderBackground =
       _toPdfColor(SimplePdfColor.grey300);
@@ -37,20 +82,22 @@ class TableBuilder {
     pw.Context context, {
     Map<PdfFontFamily, pw.Font>? fonts,
   }) {
-    final mappedData = table.data.map((item) {
+    final rawRows = table.data.map((item) {
       final row = table.mapper != null ? table.mapper!(item) : item;
-
-      return table.headers.map((header) {
-        return row[header]?.toString() ?? '';
-      }).toList();
+      final map = row as Map<dynamic, dynamic>;
+      return table.headers.map((header) => map[header]).toList();
     }).toList();
 
-    // Validation
-    for (var row in mappedData) {
+    for (final row in rawRows) {
       if (row.length != table.headers.length) {
         throw Exception("Header and row length mismatch");
       }
     }
+
+    final resolvedRows =
+        rawRows.map((row) => row.map(_resolveCell).toList()).toList();
+    final hasImages =
+        resolvedRows.any((row) => row.any((cell) => cell.isImage));
 
     final headerStyle = _resolveHeaderTextStyle(context, table.headerStyle);
     final cellStyle = _resolveCellTextStyle(context, table.cellStyle, fonts);
@@ -60,16 +107,143 @@ class TableBuilder {
           : _defaultHeaderBackground,
     );
 
-    return pw.Table.fromTextArray(
-      context: context,
+    if (!hasImages) {
+      final mappedData = resolvedRows
+          .map((row) => row.map((c) => c.text).toList())
+          .toList();
+      return pw.Table.fromTextArray(
+        context: context,
+        headers: table.headers,
+        data: mappedData,
+        headerStyle: headerStyle,
+        headerCellDecoration: headerCellDecoration,
+        cellStyle: cellStyle,
+        cellAlignment: pw.Alignment.center,
+        border: pw.TableBorder.all(width: 0.5),
+      );
+    }
+
+    return _buildTableWithMixedCells(
+      context,
       headers: table.headers,
-      data: mappedData,
+      resolvedRows: resolvedRows,
       headerStyle: headerStyle,
       headerCellDecoration: headerCellDecoration,
       cellStyle: cellStyle,
-      cellAlignment: pw.Alignment.center,
-      border: pw.TableBorder.all(width: 0.5),
     );
+  }
+
+  static _ResolvedTableCell _resolveCell(dynamic raw) {
+    if (raw == null) {
+      return _ResolvedTableCell.text('');
+    }
+    if (raw is PdfTableCell) {
+      if (raw.isImage) {
+        return _ResolvedTableCell.image(
+          raw.bytes!,
+          maxWidth: raw.maxWidth ?? _kDefaultImageMaxWidth,
+          maxHeight: raw.maxHeight ?? _kDefaultImageMaxHeight,
+          fit: raw.fit,
+        );
+      }
+      return _ResolvedTableCell.text(raw.text);
+    }
+    if (raw is Uint8List) {
+      return _ResolvedTableCell.image(
+        raw,
+        maxWidth: _kDefaultImageMaxWidth,
+        maxHeight: _kDefaultImageMaxHeight,
+        fit: null,
+      );
+    }
+    return _ResolvedTableCell.text(raw.toString());
+  }
+
+  static pw.Widget _buildTableWithMixedCells(
+    pw.Context context, {
+    required List<String> headers,
+    required List<List<_ResolvedTableCell>> resolvedRows,
+    required pw.TextStyle headerStyle,
+    required pw.BoxDecoration headerCellDecoration,
+    required pw.TextStyle? cellStyle,
+  }) {
+    final effectiveCellStyle =
+        cellStyle ?? pw.Theme.of(context).tableCell;
+    const padding = pw.EdgeInsets.all(5);
+    const align = pw.Alignment.center;
+
+    final rows = <pw.TableRow>[
+      pw.TableRow(
+        repeat: true,
+        children: [
+          for (final h in headers)
+            pw.Container(
+              alignment: align,
+              padding: padding,
+              decoration: headerCellDecoration,
+              child: pw.Text(
+                h,
+                style: headerStyle,
+                textAlign: pw.TextAlign.center,
+              ),
+            ),
+        ],
+      ),
+    ];
+
+    for (final row in resolvedRows) {
+      rows.add(
+        pw.TableRow(
+          children: [
+            for (final cell in row)
+              pw.Container(
+                alignment: align,
+                padding: padding,
+                child: cell.isImage
+                    ? pw.Image(
+                        pw.MemoryImage(cell.imageBytes!),
+                        width: cell.imageMaxWidth,
+                        height: cell.imageMaxHeight,
+                        fit: _toPdfBoxFit(cell.imageFit),
+                      )
+                    : pw.Text(
+                        cell.text,
+                        style: effectiveCellStyle,
+                        textAlign: pw.TextAlign.center,
+                      ),
+              ),
+          ],
+        ),
+      );
+    }
+
+    return pw.Table(
+      border: pw.TableBorder.all(width: 0.5),
+      tableWidth: pw.TableWidth.max,
+      defaultColumnWidth: const pw.IntrinsicColumnWidth(),
+      defaultVerticalAlignment: pw.TableCellVerticalAlignment.full,
+      children: rows,
+    );
+  }
+
+  static pw.BoxFit _toPdfBoxFit(BoxFit? fit) {
+    if (fit == null) return pw.BoxFit.contain;
+    switch (fit) {
+      case BoxFit.fill:
+        return pw.BoxFit.fill;
+      case BoxFit.contain:
+        return pw.BoxFit.contain;
+      case BoxFit.cover:
+        return pw.BoxFit.cover;
+      case BoxFit.fitWidth:
+        return pw.BoxFit.fitWidth;
+      case BoxFit.fitHeight:
+        return pw.BoxFit.fitHeight;
+      case BoxFit.none:
+        return pw.BoxFit.none;
+      case BoxFit.scaleDown:
+        return pw.BoxFit.scaleDown;
+    }
   }
 
   static bool _hasRenderableSummary(PdfTable table) {

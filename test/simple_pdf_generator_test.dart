@@ -1,5 +1,15 @@
+// ignore_for_file: deprecated_member_use_from_same_package
+
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:simple_pdf_generator/simple_pdf_generator.dart';
+
+/// 1×1 PNG (transparent pixel) for image cell tests.
+final Uint8List kTinyPngBytes = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -188,6 +198,34 @@ void main() {
             textColor: SimplePdfColor.red700,
             fontFamily: PdfFontFamily.poppins,
           ),
+        ),
+      ],
+    );
+    expect(await doc.save(), isNotEmpty);
+  });
+
+  test('PdfTable mixes text, PdfTableCell.image, and Uint8List in one row', () async {
+    final doc = await SimplePdf.generate(
+      header: header,
+      tables: [
+        PdfTable(
+          headers: const ['Label', 'Photo', 'Amount'],
+          data: [
+            {
+              'Label': PdfTableCell.text('Item A'),
+              'Photo': PdfTableCell.image(
+                kTinyPngBytes,
+                maxWidth: 24,
+                maxHeight: 24,
+              ),
+              'Amount': r'$12.00',
+            },
+            {
+              'Label': 'Item B',
+              'Photo': kTinyPngBytes,
+              'Amount': PdfTableCell.text(r'$5.00'),
+            },
+          ],
         ),
       ],
     );
