@@ -25,6 +25,7 @@ Building PDFs in Flutter often means a lot of repetitive layout code: tables, al
   - Summary styling (`PdfSummaryStyle`)
 - Multilingual table text support (Unicode) with the package theme font
 - Table body cells can mix text and images (`PdfTableCell`, or shorthand `String` / `Uint8List` in row maps)
+- Page orientation support: portrait (default) and landscape
 - Configurable header (`title`, `subtitle`, `extra`) and optional footer
 - Small surface area and a thin dependency on [`pdf`](https://pub.dev/packages/pdf)
 
@@ -36,7 +37,7 @@ Add `simple_pdf_generator` to your `pubspec.yaml`.
 
 ```yaml
 dependencies:
-  simple_pdf_generator: ^0.2.0
+  simple_pdf_generator: ^0.2.2
 ```
 
 Run `flutter pub get`.
@@ -133,6 +134,27 @@ final pdf = await SimplePdf.generate(
       },
     ),
   ],
+);
+```
+
+### Page orientation (portrait / landscape)
+
+`SimplePdf.generate` supports both portrait and landscape pages:
+
+- **Portrait (default):** no extra flag needed
+- **Landscape:** set `pageLandscape: true`
+- **Custom page format:** pass `pageFormat`; when provided, it overrides `pageLandscape`
+
+```dart
+final pdf = await SimplePdf.generate(
+  header: PdfHeader(title: 'Landscape report'),
+  tables: [
+    PdfTable(
+      headers: ['Name', 'Address', 'Present', 'Total Days', 'Attd.'],
+      data: rows,
+    ),
+  ],
+  pageLandscape: true, // A4 landscape
 );
 ```
 

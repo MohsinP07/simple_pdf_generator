@@ -1,3 +1,4 @@
+import 'package:pdf/pdf.dart' show PdfPageFormat;
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/pdf_header.dart';
@@ -29,6 +30,9 @@ class SimplePdf {
   ///
   /// The returned value is a `pdf` package document; call [pw.Document.save]
   /// to obtain `Uint8List` bytes for writing to a file.
+  ///
+  /// [pageLandscape] uses A4 landscape when true; A4 portrait when false (default).
+  /// When [pageFormat] is non-null, it wins over [pageLandscape] (for custom sizes/margins).
   static Future<pw.Document> generate({
     required PdfHeader header,
     List<PdfTable>? tables,
@@ -36,14 +40,20 @@ class SimplePdf {
     PdfTable? table,
     PdfFooter? footer,
     pw.ThemeData? theme,
+    bool pageLandscape = false,
+    PdfPageFormat? pageFormat,
   }) async {
     final resolvedTables = _resolveTables(tables: tables, table: table);
     final themeData = theme ?? await loadSimplePdfUnicodeTheme();
     final fonts = await _loadRequiredFonts(resolvedTables);
     final pdf = pw.Document();
 
+    final PdfPageFormat resolvedPageFormat = pageFormat ??
+        (pageLandscape ? PdfPageFormat.a4.landscape : PdfPageFormat.a4);
+
     pdf.addPage(
       pw.MultiPage(
+        pageFormat: resolvedPageFormat,
         theme: themeData,
         build: (context) {
           final widgets = <pw.Widget>[];

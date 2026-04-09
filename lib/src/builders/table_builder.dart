@@ -116,7 +116,7 @@ class TableBuilder {
         headers: table.headers,
         data: mappedData,
         headerStyle: headerStyle,
-        headerCellDecoration: headerCellDecoration,
+        headerDecoration: headerCellDecoration,
         cellStyle: cellStyle,
         cellAlignment: pw.Alignment.center,
         border: pw.TableBorder.all(width: 0.5),

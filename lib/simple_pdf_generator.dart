@@ -4,8 +4,11 @@
 ///
 /// This package wraps the lower-level [`pdf`](https://pub.dev/packages/pdf)
 /// layout widgets into a single flow for reports and exports.
+///
+/// Page orientation: set `pageLandscape` or `pageFormat` on [SimplePdf.generate].
 library simple_pdf_generator;
 
+export 'package:pdf/pdf.dart' show PdfPageFormat;
 export 'src/core/simple_pdf.dart';
 export 'src/fonts/simple_pdf_fonts.dart';
 export 'src/models/pdf_header.dart';
