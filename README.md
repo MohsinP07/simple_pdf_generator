@@ -16,7 +16,7 @@ Building PDFs in Flutter often means a lot of repetitive layout code: tables, al
 ## Features
 
 - Simple `SimplePdf.generate` API
-- Multiple tables in a single PDF (`tables: List<PdfTable>`)
+- Multiple tables in a single PDF (`tables: List<PdfTable>`), or mixed layout via `sections: List<PdfSection>` (`PdfTable` + `PdfTableRow` for side‑by‑side tables)
 - Tables from structured data with optional `mapper` for dynamic or nested sources
 - Per-table summary sections (`summaryHeaders` + `summaryData`)
 - Per-table styling:
@@ -37,7 +37,7 @@ Add `simple_pdf_generator` to your `pubspec.yaml`.
 
 ```yaml
 dependencies:
-  simple_pdf_generator: ^0.2.2
+  simple_pdf_generator: ^0.2.3
 ```
 
 Run `flutter pub get`.
@@ -157,6 +157,45 @@ final pdf = await SimplePdf.generate(
   pageLandscape: true, // A4 landscape
 );
 ```
+
+### Side-by-side tables (`PdfTableRow`)
+
+Use `sections` when you need a **full-width table** and then **several tables on one horizontal row** (equal width per table, with gaps). Each `PdfTable` still owns its own `headerStyle`, `cellStyle`, and summary.
+
+- Pass `sections: [ ... ]` where each element is a `PdfTable` or a `PdfTableRow`.
+- If `sections` is non-null and not empty, it is used and `tables` / `table` are **ignored**.
+- `PdfTableRow` options: `horizontalGap`, `verticalPaddingBefore`, `verticalPaddingAfter` (defaults: 8 / 12 / 12 pt). Normal vertical spacing between sections still applies (`kSimplePdfTableSpacing`).
+- **Validation:** before layout, each table’s estimated minimum width is compared to its share of the page body width (`pageFormat.availableWidth`). If any table does not fit, generation throws `StateError` with:  
+  `Tables exceed available width in PdfTableRow. Reduce columns or number of tables.`
+- Tables inside a row cannot use `startOnNewPage: true`.
+
+```dart
+final pdf = await SimplePdf.generate(
+  header: PdfHeader(title: 'Dashboard'),
+  sections: [
+    PdfTable(
+      headers: ['Metric', 'Value'],
+      data: const [
+        {'Metric': 'Total', 'Value': '100'},
+      ],
+    ),
+    PdfTableRow(
+      tables: [
+        PdfTable(headers: ['A'], data: const [{'A': '1'}]),
+        PdfTable(headers: ['B'], data: const [{'B': '2'}]),
+      ],
+    ),
+    PdfTable(
+      headers: ['Note'],
+      data: const [{'Note': 'Full width again'}],
+    ),
+  ],
+);
+```
+
+Sample PDF mixing full-width tables with **2-up** and **3-up** `PdfTableRow` sections:
+
+![Sample PDF: PdfTableRow side-by-side tables demo](https://raw.githubusercontent.com/MohsinP07/simple_pdf_generator/main/doc/pdf_table_row_demo.png)
 
 ### Multiple tables + per-table summary
 
@@ -288,6 +327,10 @@ Multilingual table example (Unicode text in table cells):
 
 ![Sample PDF: multilingual table text](https://raw.githubusercontent.com/MohsinP07/simple_pdf_generator/main/doc/multilingual_table_output.png)
 
+`PdfTableRow` demo (full-width tables plus side-by-side tables in one row):
+
+![Sample PDF: PdfTableRow demo](https://raw.githubusercontent.com/MohsinP07/simple_pdf_generator/main/doc/pdf_table_row_demo.png)
+
 More features are on the way—see [Roadmap](#roadmap) for planned work.
 
 ## API summary
@@ -296,7 +339,9 @@ More features are on the way—see [Roadmap](#roadmap) for planned work.
 |------------|------|
 | `SimplePdf` | `generate(...)` builds the PDF document |
 | `PdfHeader` | `title` (required), optional `subtitle`, `extra` |
+| `PdfSection` | Base type: `PdfTable` or `PdfTableRow` for `sections` |
 | `PdfTable`  | `headers`, `data`, optional `mapper`, optional per-table summary + styling |
+| `PdfTableRow` | `tables`: several `PdfTable`s in one horizontal row (equal width) |
 | `PdfTableCell` | `text` or `image` cell for mixed text/PNG (or `String` / `Uint8List` in maps) |
 | `PdfFooter` | Optional `text` |
 

@@ -2,11 +2,16 @@ import 'package:pdf/pdf.dart' show PdfPageFormat;
 import 'package:pdf/widgets.dart' as pw;
 
 import '../models/pdf_header.dart';
+import '../models/pdf_section.dart';
 import '../models/pdf_table.dart';
+import '../models/pdf_table_row.dart';
 import '../models/pdf_footer.dart';
 import '../builders/header_builder.dart';
 import '../builders/table_builder.dart';
 import '../builders/footer_builder.dart';
+import '../builders/document_section_widgets.dart';
+import '../builders/table_row_builder.dart';
+import '../builders/pdf_table_row_validator.dart';
 import '../fonts/simple_pdf_fonts.dart';
 import '../models/pdf_font_family.dart';
 
@@ -14,10 +19,14 @@ import '../models/pdf_font_family.dart';
 const double kSimplePdfTableSpacing = 24;
 
 /// Entry point for creating PDF documents from [PdfHeader], one or more
-/// [PdfTable]s, and optional [PdfFooter].
+/// [PdfSection]s (or legacy [PdfTable]s), and optional [PdfFooter].
 class SimplePdf {
-  /// Builds a multi-page PDF with the given [header], [tables] (or legacy
-  /// [table]), and [footer].
+  /// Builds a multi-page PDF with the given [header], [sections] or [tables]
+  /// (or legacy [table]), and [footer].
+  ///
+  /// Prefer [sections] when mixing full-width [PdfTable]s with [PdfTableRow]
+  /// (side-by-side tables). If [sections] is non-null and not empty, it is
+  /// used and [tables] / [table] are ignored.
   ///
   /// Tables are rendered top to bottom in order, separated by
   /// [kSimplePdfTableSpacing]. Each [PdfTable] may append an optional summary
@@ -35,6 +44,7 @@ class SimplePdf {
   /// When [pageFormat] is non-null, it wins over [pageLandscape] (for custom sizes/margins).
   static Future<pw.Document> generate({
     required PdfHeader header,
+    List<PdfSection>? sections,
     List<PdfTable>? tables,
     @Deprecated('Use tables instead')
     PdfTable? table,
@@ -43,13 +53,20 @@ class SimplePdf {
     bool pageLandscape = false,
     PdfPageFormat? pageFormat,
   }) async {
-    final resolvedTables = _resolveTables(tables: tables, table: table);
+    final resolvedSections = _resolveSections(
+      sections: sections,
+      tables: tables,
+      table: table,
+    );
     final themeData = theme ?? await loadSimplePdfUnicodeTheme();
-    final fonts = await _loadRequiredFonts(resolvedTables);
+    final allTables = _flattenTables(resolvedSections);
+    final fonts = await _loadRequiredFonts(allTables);
     final pdf = pw.Document();
 
     final PdfPageFormat resolvedPageFormat = pageFormat ??
         (pageLandscape ? PdfPageFormat.a4.landscape : PdfPageFormat.a4);
+
+    _validateTableRowsAgainstPage(resolvedSections, resolvedPageFormat);
 
     pdf.addPage(
       pw.MultiPage(
@@ -60,43 +77,35 @@ class SimplePdf {
 
           widgets.addAll(HeaderBuilder.build(header));
 
-          for (var i = 0; i < resolvedTables.length; i++) {
-            if (resolvedTables[i].startOnNewPage) {
-              widgets.add(pw.NewPage());
-            }
-            if (i > 0 && !resolvedTables[i].startOnNewPage) {
-              widgets.add(pw.SizedBox(height: kSimplePdfTableSpacing));
-            }
-            final sectionTitleImage = resolvedTables[i].sectionTitleImage;
-            if (sectionTitleImage != null) {
-              widgets.add(
-                pw.Image(
-                  pw.MemoryImage(sectionTitleImage),
-                  height: 30,
-                  fit: pw.BoxFit.contain,
+          for (var i = 0; i < resolvedSections.length; i++) {
+            final section = resolvedSections[i];
+            if (section is PdfTable) {
+              if (section.startOnNewPage) {
+                widgets.add(pw.NewPage());
+              }
+              if (i > 0 && !section.startOnNewPage) {
+                widgets.add(pw.SizedBox(height: kSimplePdfTableSpacing));
+              }
+              widgets.addAll(buildTableLeadInWidgets(section, context));
+              widgets.addAll(
+                TableBuilder.buildSection(
+                  section,
+                  context,
+                  fonts: fonts,
                 ),
               );
-              widgets.add(pw.SizedBox(height: 6));
-            }
-            final sectionTitle = resolvedTables[i].sectionTitle;
-            if (sectionTitle != null && sectionTitle.trim().isNotEmpty) {
+            } else if (section is PdfTableRow) {
+              if (i > 0) {
+                widgets.add(pw.SizedBox(height: kSimplePdfTableSpacing));
+              }
               widgets.add(
-                pw.Text(
-                  sectionTitle,
-                  style: pw.Theme.of(context)
-                      .defaultTextStyle
-                      .copyWith(fontSize: 12, fontWeight: pw.FontWeight.bold),
+                TableRowBuilder.build(
+                  section,
+                  context,
+                  fonts: fonts,
                 ),
               );
-              widgets.add(pw.SizedBox(height: 8));
             }
-            widgets.addAll(
-              TableBuilder.buildSection(
-                resolvedTables[i],
-                context,
-                fonts: fonts,
-              ),
-            );
           }
 
           final footerWidget = FooterBuilder.build(footer);
@@ -110,6 +119,47 @@ class SimplePdf {
     );
 
     return pdf;
+  }
+
+  static void _validateTableRowsAgainstPage(
+    List<PdfSection> sections,
+    PdfPageFormat pageFormat,
+  ) {
+    final w = pageFormat.availableWidth;
+    for (final s in sections) {
+      if (s is PdfTableRow) {
+        validatePdfTableRowLayout(s, w);
+      }
+    }
+  }
+
+  static List<PdfSection> _resolveSections({
+    List<PdfSection>? sections,
+    List<PdfTable>? tables,
+    PdfTable? table,
+  }) {
+    if (sections != null) {
+      if (sections.isEmpty) {
+        throw ArgumentError(
+          'sections must not be empty when provided. Omit sections and use tables instead.',
+        );
+      }
+      return List<PdfSection>.from(sections);
+    }
+    final legacy = _resolveTables(tables: tables, table: table);
+    return legacy.map<PdfSection>((t) => t).toList();
+  }
+
+  static List<PdfTable> _flattenTables(List<PdfSection> sections) {
+    final out = <PdfTable>[];
+    for (final s in sections) {
+      if (s is PdfTable) {
+        out.add(s);
+      } else if (s is PdfTableRow) {
+        out.addAll(s.tables);
+      }
+    }
+    return out;
   }
 
   static Future<Map<PdfFontFamily, pw.Font>> _loadRequiredFonts(
@@ -147,7 +197,7 @@ class SimplePdf {
       );
     }
     throw ArgumentError(
-      'SimplePdf.generate requires at least one table: pass tables or table.',
+      'SimplePdf.generate requires at least one table: pass sections, tables, or table.',
     );
   }
 }

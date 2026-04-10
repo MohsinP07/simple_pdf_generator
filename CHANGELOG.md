@@ -1,3 +1,9 @@
+## 0.2.3
+
+- Added `PdfSection`, `PdfTableRow`, and optional `sections` on `SimplePdf.generate` to render multiple tables side by side in one row (equal column widths, configurable horizontal/vertical spacing).
+- Strict layout validation: throws `StateError` with message `Tables exceed available width in PdfTableRow. Reduce columns or number of tables.` when estimated minimum width for any table in the row exceeds its share of the page body width.
+- `PdfTable` now extends `PdfSection`; existing `tables` / `table` usage is unchanged.
+
 ## 0.2.2
 
 - Added page orientation support in `SimplePdf.generate`: portrait (default) and landscape via `pageLandscape`.

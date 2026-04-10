@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'pdf_section.dart';
 import 'pdf_table_cell.dart';
 import 'pdf_table_header_style.dart';
 import 'pdf_table_cell_style.dart';
@@ -17,7 +18,7 @@ import 'pdf_summary_style.dart';
 typedef PdfMapper = Map<String, dynamic> Function(dynamic item);
 
 /// Table layout: column headers and row data, with optional per-row mapping.
-class PdfTable {
+class PdfTable extends PdfSection {
   /// Column titles in left-to-right order; keys in each row map should match
   /// these strings (possibly via [mapper]).
   final List<String> headers;

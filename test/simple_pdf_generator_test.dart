@@ -56,6 +56,13 @@ void main() {
     );
   });
 
+  test('throws when sections is empty', () async {
+    expect(
+      () => SimplePdf.generate(header: header, sections: []),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
   test('throws when tables is empty and table is null', () async {
     expect(
       () => SimplePdf.generate(header: header, tables: []),
@@ -230,5 +237,53 @@ void main() {
       ],
     );
     expect(await doc.save(), isNotEmpty);
+  });
+
+  test('sections with PdfTableRow generates document', () async {
+    final doc = await SimplePdf.generate(
+      header: header,
+      sections: [
+        PdfTable(headers: const ['A'], data: const [
+          {'A': '1'},
+        ]),
+        PdfTableRow(
+          tables: [
+            PdfTable(headers: const ['X'], data: const [
+              {'X': 'a'},
+            ]),
+            PdfTable(headers: const ['Y'], data: const [
+              {'Y': 'b'},
+            ]),
+          ],
+        ),
+        PdfTable(headers: const ['B'], data: const [
+          {'B': '2'},
+        ]),
+      ],
+    );
+    expect(await doc.save(), isNotEmpty);
+  });
+
+  test('PdfTableRow throws when tables exceed available width', () async {
+    final headers =
+        List<String>.generate(10, (i) => 'H${'M' * 25}$i');
+    final row = <String, dynamic>{
+      for (var i = 0; i < 10; i++) headers[i]: 'V${'W' * 30}$i',
+    };
+    final wide = PdfTable(headers: headers, data: [row]);
+    expect(
+      () => SimplePdf.generate(
+        header: header,
+        sections: [
+          PdfTableRow(tables: [wide, wide]),
+        ],
+      ),
+      throwsA(
+        predicate((Object e) {
+          if (e is! StateError) return false;
+          return e.message.contains('Tables exceed available width');
+        }),
+      ),
+    );
   });
 }

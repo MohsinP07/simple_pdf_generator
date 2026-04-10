@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter/painting.dart' show BoxFit;
@@ -73,6 +74,106 @@ class TableBuilder {
     return widgets;
   }
 
+  /// Conservative minimum width (PDF points) for [table] main grid + summary +
+  /// optional section title assets. Used to validate [PdfTableRow] layouts.
+  static double estimateMinSectionWidth(PdfTable table) {
+    if (table.headers.isEmpty) {
+      return _estimateSummaryMinWidth(table) + _estimateSectionLeadInMinWidth(table);
+    }
+    final rawRows = _rawRowValues(table);
+    for (final row in rawRows) {
+      if (row.length != table.headers.length) {
+        throw Exception('Header and row length mismatch');
+      }
+    }
+    final resolvedRows =
+        rawRows.map((row) => row.map(_resolveCell).toList()).toList();
+    final n = table.headers.length;
+    final headerFs = table.headerStyle?.fontSize ?? 10.0;
+    final cellFs = table.cellStyle?.fontSize ?? 11.0;
+    final colMins = List<double>.filled(n, 0.0);
+    for (var j = 0; j < n; j++) {
+      colMins[j] = math.max(
+        colMins[j],
+        _approxTextWidth(table.headers[j], headerFs),
+      );
+    }
+    for (final row in resolvedRows) {
+      for (var j = 0; j < n; j++) {
+        colMins[j] = math.max(
+          colMins[j],
+          _minResolvedCellWidth(row[j], cellFs),
+        );
+      }
+    }
+    const cellHorizontalPadding = 10.0;
+    final borderTotal = (n + 1) * 0.5;
+    var mainW = borderTotal;
+    for (final w in colMins) {
+      mainW += w + cellHorizontalPadding;
+    }
+    final summaryW = _estimateSummaryMinWidth(table);
+    final leadIn = _estimateSectionLeadInMinWidth(table);
+    return math.max(math.max(mainW, summaryW), leadIn);
+  }
+
+  static List<List<dynamic>> _rawRowValues(PdfTable table) {
+    return table.data.map((item) {
+      final row = table.mapper != null ? table.mapper!(item) : item;
+      final map = row as Map<dynamic, dynamic>;
+      return table.headers.map((header) => map[header]).toList();
+    }).toList();
+  }
+
+  static double _approxTextWidth(String text, double fontSize) {
+    if (text.isEmpty) return 0;
+    final units = math.max(text.runes.length, text.length);
+    return units * fontSize * 0.62;
+  }
+
+  static double _minResolvedCellWidth(_ResolvedTableCell cell, double cellFs) {
+    if (cell.isImage) {
+      return (cell.imageMaxWidth ?? _kDefaultImageMaxWidth) + 10;
+    }
+    return _approxTextWidth(cell.text, cellFs) + 10;
+  }
+
+  static double _estimateSummaryMinWidth(PdfTable table) {
+    if (!_hasRenderableSummary(table)) return 0;
+    final headers = table.summaryHeaders!;
+    final data = table.summaryData!;
+    final n = headers.length;
+    final headerFs = table.summaryStyle?.headerStyle?.fontSize ?? 10.0;
+    final cellFs = table.summaryStyle?.cellStyle?.fontSize ?? 11.0;
+    final colMins = List<double>.filled(n, 0.0);
+    for (var j = 0; j < n; j++) {
+      colMins[j] = math.max(colMins[j], _approxTextWidth(headers[j], headerFs));
+    }
+    for (final row in data) {
+      for (var j = 0; j < row.length && j < n; j++) {
+        colMins[j] = math.max(colMins[j], _approxTextWidth(row[j], cellFs));
+      }
+    }
+    const cellHorizontalPadding = 20.0;
+    var w = (n + 1) * 0.5;
+    for (final c in colMins) {
+      w += c + cellHorizontalPadding;
+    }
+    return w;
+  }
+
+  static double _estimateSectionLeadInMinWidth(PdfTable table) {
+    var w = 0.0;
+    if (table.sectionTitleImage != null) {
+      w = math.max(w, 40);
+    }
+    final t = table.sectionTitle;
+    if (t != null && t.trim().isNotEmpty) {
+      w = math.max(w, _approxTextWidth(t.trim(), 12));
+    }
+    return w;
+  }
+
   /// Maps each row (optionally via [PdfTable.mapper]) and builds the table widget.
   ///
   /// Pass [context] from [pw.MultiPage.build] so table cells inherit [pw.Theme]
@@ -82,11 +183,7 @@ class TableBuilder {
     pw.Context context, {
     Map<PdfFontFamily, pw.Font>? fonts,
   }) {
-    final rawRows = table.data.map((item) {
-      final row = table.mapper != null ? table.mapper!(item) : item;
-      final map = row as Map<dynamic, dynamic>;
-      return table.headers.map((header) => map[header]).toList();
-    }).toList();
+    final rawRows = _rawRowValues(table);
 
     for (final row in rawRows) {
       if (row.length != table.headers.length) {
