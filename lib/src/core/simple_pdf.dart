@@ -1,7 +1,11 @@
 import 'package:pdf/pdf.dart' show PdfPageFormat;
 import 'package:pdf/widgets.dart' as pw;
 
+import '../invoice/invoice_pdf_adapter.dart';
+import '../invoice/invoice_validator.dart';
+import '../models/invoice_data.dart';
 import '../models/pdf_header.dart';
+import '../models/pdf_plain_text_block.dart';
 import '../models/pdf_section.dart';
 import '../models/pdf_table.dart';
 import '../models/pdf_table_row.dart';
@@ -9,6 +13,7 @@ import '../models/pdf_footer.dart';
 import '../builders/header_builder.dart';
 import '../builders/table_builder.dart';
 import '../builders/footer_builder.dart';
+import '../builders/text_block_builder.dart';
 import '../builders/document_section_widgets.dart';
 import '../builders/table_row_builder.dart';
 import '../builders/pdf_table_row_validator.dart';
@@ -24,9 +29,9 @@ class SimplePdf {
   /// Builds a multi-page PDF with the given [header], [sections] or [tables]
   /// (or legacy [table]), and [footer].
   ///
-  /// Prefer [sections] when mixing full-width [PdfTable]s with [PdfTableRow]
-  /// (side-by-side tables). If [sections] is non-null and not empty, it is
-  /// used and [tables] / [table] are ignored.
+  /// Prefer [sections] when mixing full-width [PdfTable]s, [PdfPlainTextBlock]
+  /// sections, or [PdfTableRow] (side-by-side tables). If [sections] is non-null
+  /// and not empty, it is used and [tables] / [table] are ignored.
   ///
   /// Tables are rendered top to bottom in order, separated by
   /// [kSimplePdfTableSpacing]. Each [PdfTable] may append an optional summary
@@ -94,6 +99,11 @@ class SimplePdf {
                   fonts: fonts,
                 ),
               );
+            } else if (section is PdfPlainTextBlock) {
+              if (i > 0) {
+                widgets.add(pw.SizedBox(height: kSimplePdfTableSpacing));
+              }
+              widgets.addAll(TextBlockBuilder.build(section, context));
             } else if (section is PdfTableRow) {
               if (i > 0) {
                 widgets.add(pw.SizedBox(height: kSimplePdfTableSpacing));
@@ -119,6 +129,33 @@ class SimplePdf {
     );
 
     return pdf;
+  }
+
+  /// Builds a minimal invoice PDF from structured [data].
+  ///
+  /// Uses the same rendering pipeline as [generate]: [PdfHeader], a plain-text
+  /// [PdfPlainTextBlock] for “Bill To”, [PdfTable] for line items, and
+  /// [PdfFooter] for total plus optional amount-in-words and footer notes.
+  /// Throws [ArgumentError]
+  /// when validation fails (empty items, empty names, or non-finite / out of
+  /// range quantities and prices).
+  ///
+  /// Optional [theme], [pageLandscape], and [pageFormat] behave like [generate].
+  static Future<pw.Document> invoice({
+    required InvoiceData data,
+    pw.ThemeData? theme,
+    bool pageLandscape = false,
+    PdfPageFormat? pageFormat,
+  }) async {
+    InvoiceValidator.validate(data);
+    return generate(
+      header: InvoicePdfAdapter.buildHeader(data),
+      sections: InvoicePdfAdapter.buildSections(data),
+      footer: InvoicePdfAdapter.buildFooter(data),
+      theme: theme,
+      pageLandscape: pageLandscape,
+      pageFormat: pageFormat,
+    );
   }
 
   static void _validateTableRowsAgainstPage(

@@ -1,3 +1,11 @@
+## 0.2.4
+
+- Added **`SimplePdf.invoice`** with **`InvoiceData`** and **`InvoiceItem`**: minimal invoice PDFs (header, plain-text “Bill To”, line-items table, footer) built on the same pipeline as **`SimplePdf.generate`**.
+- **Bill To** uses paragraph-style text (no table borders). Optional **`customerAddress`** (multi-line via `\n`) and **`customerPhone`**.
+- Optional **`amountInWords`** (shown under the numeric total) and **`footerNotes`** (multi-line marketing / location copy) via extended **`PdfFooter`**.
+- Added **`PdfPlainTextBlock`** (`PdfSection`) for borderless stacked text in **`sections`**; documented in the README.
+- **`PdfFooter`**: optional **`trailingLines`** for stacked lines after **`text`** (used by invoices and available in **`generate`** generally).
+
 ## 0.2.3
 
 - Added `PdfSection`, `PdfTableRow`, and optional `sections` on `SimplePdf.generate` to render multiple tables side by side in one row (equal column widths, configurable horizontal/vertical spacing).

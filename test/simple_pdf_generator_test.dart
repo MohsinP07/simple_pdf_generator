@@ -264,6 +264,112 @@ void main() {
     expect(await doc.save(), isNotEmpty);
   });
 
+  test('invoice produces saveable document', () async {
+    final doc = await SimplePdf.invoice(
+      data: InvoiceData(
+        companyName: 'Acme Co',
+        customerName: 'Jane Buyer',
+        customerAddress: '1 High Street\nLondon',
+        customerPhone: '+44 20 0000 0000',
+        invoiceNumber: 'INV-001',
+        date: DateTime(2026, 4, 11),
+        amountInWords: 'Two hundred fifty point five only',
+        footerNotes: 'Acme Co — Registered in England\nVisit: example.com',
+        items: const [
+          InvoiceItem(name: 'Widget', quantity: 2, price: 100),
+          InvoiceItem(name: 'Gadget', quantity: 1, price: 50.5),
+        ],
+      ),
+    );
+    expect(await doc.save(), isNotEmpty);
+  });
+
+  test('generate with PdfPlainTextBlock and table produces document', () async {
+    final doc = await SimplePdf.generate(
+      header: header,
+      sections: [
+        PdfPlainTextBlock(
+          title: 'Notes',
+          lines: const ['First line', 'Second line'],
+        ),
+        PdfTable(
+          headers: const ['A'],
+          data: const [
+            {'A': '1'},
+          ],
+        ),
+      ],
+    );
+    expect(await doc.save(), isNotEmpty);
+  });
+
+  test('PdfFooter trailingLines without text still renders', () async {
+    final doc = await SimplePdf.generate(
+      header: header,
+      tables: [
+        PdfTable(headers: const ['X'], data: const [
+          {'X': 'y'},
+        ]),
+      ],
+      footer: PdfFooter(
+        trailingLines: const ['Line one', 'Line two'],
+      ),
+    );
+    expect(await doc.save(), isNotEmpty);
+  });
+
+  test('invoice throws when items is empty', () async {
+    expect(
+      () => SimplePdf.invoice(
+        data: const InvoiceData(
+          companyName: 'A',
+          customerName: 'B',
+          items: [],
+        ),
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('invoice throws when item quantity or price is invalid', () async {
+    expect(
+      () => SimplePdf.invoice(
+        data: InvoiceData(
+          companyName: 'A',
+          customerName: 'B',
+          items: [
+            const InvoiceItem(name: 'x', quantity: 0, price: 1),
+          ],
+        ),
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+    expect(
+      () => SimplePdf.invoice(
+        data: InvoiceData(
+          companyName: 'A',
+          customerName: 'B',
+          items: [
+            const InvoiceItem(name: 'x', quantity: 1, price: -1),
+          ],
+        ),
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+    expect(
+      () => SimplePdf.invoice(
+        data: InvoiceData(
+          companyName: 'A',
+          customerName: 'B',
+          items: [
+            InvoiceItem(name: 'x', quantity: double.nan, price: 1),
+          ],
+        ),
+      ),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
   test('PdfTableRow throws when tables exceed available width', () async {
     final headers =
         List<String>.generate(10, (i) => 'H${'M' * 25}$i');
